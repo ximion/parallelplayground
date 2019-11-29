@@ -9,9 +9,9 @@
 
 static std::atomic_bool producer_running = false;
 
-void producer_fast(LockStream<MyDataFrame> *stream)
+void producer_fast(const std::string& threadName, LockStream<MyDataFrame> *stream)
 {
-    pthread_setname_np(pthread_self(), "producer");
+    pthread_setname_np(pthread_self(), threadName.c_str());
 
     while (!producer_running) {}
 
@@ -22,19 +22,19 @@ void producer_fast(LockStream<MyDataFrame> *stream)
     stream->terminate();
 }
 
-void consumer_fast(LockStream<MyDataFrame> *stream)
+void consumer_fast(const std::string& threadName, LockStream<MyDataFrame> *stream)
 {
-    pthread_setname_np(pthread_self(), "consumer_fast");
+    pthread_setname_np(pthread_self(), threadName.c_str());
     size_t lastId = 0;
 
-    auto sub = stream->subscribe("FastConsumer");
+    auto sub = stream->subscribe(threadName);
     while (true) {
         auto data = sub->next();
         if (!data.has_value())
             break; // subscription has been terminated
         auto result = process_data_fast(data.value());
 
-        //display_frame(result);
+        //display_frame(result, sub->name());
 
         if (data->id != (lastId + 1))
             std::cout << "Value dropped (fast consumer) [" << data->id << "]" << " BufferLen: " << sub->bufferLength() << std::endl;
@@ -44,12 +44,12 @@ void consumer_fast(LockStream<MyDataFrame> *stream)
         std::cout << "Fast consumer received only " << lastId << " data elements out of " << N_OF_DATAFRAMES << std::endl;
 }
 
-void consumer_slow(LockStream<MyDataFrame> *stream)
+void consumer_slow(const std::string& threadName, LockStream<MyDataFrame> *stream)
 {
-    pthread_setname_np(pthread_self(), "consumer_slow");
+    pthread_setname_np(pthread_self(), threadName.c_str());
     size_t lastId = 0;
 
-    auto sub = stream->subscribe("SlowConsumer");
+    auto sub = stream->subscribe(threadName);
     while (true) {
         auto data = sub->next();
         if (!data.has_value())
@@ -65,11 +65,11 @@ void consumer_slow(LockStream<MyDataFrame> *stream)
         std::cout << "Slow consumer received only " << lastId << " data elements out of " << N_OF_DATAFRAMES << std::endl;
 }
 
-void consumer_instant(LockStream<MyDataFrame> *stream)
+void consumer_instant(const std::string& threadName, LockStream<MyDataFrame> *stream)
 {
-    pthread_setname_np(pthread_self(), "consumer_instant");
+    pthread_setname_np(pthread_self(), threadName.c_str());
 
-    auto sub = stream->subscribe("InstantConsumer");
+    auto sub = stream->subscribe(threadName);
     while (true) {
         auto data = sub->next();
         if (!data.has_value())
@@ -78,16 +78,39 @@ void consumer_instant(LockStream<MyDataFrame> *stream)
     }
 }
 
-void run_4threads()
+void transformer_fast(const std::string& threadName, LockStream<MyDataFrame> *recvStream, LockStream<MyDataFrame> *prodStream)
+{
+    pthread_setname_np(pthread_self(), threadName.c_str());
+    size_t count = 1;
+
+    auto sub = recvStream->subscribe(threadName);
+    while (true) {
+        auto data = sub->next();
+        if (!data.has_value())
+            break; // subscription has been terminated
+        auto newData = transform_data_fast(data.value(), count);
+        //display_frame(newData.frame, sub->name());
+
+        prodStream->push(newData);
+        count++;
+    }
+    prodStream->terminate();
+}
+
+void run_6threads()
 {
     std::vector<std::thread> threads;
-    auto stream = new LockStream<MyDataFrame>();
+    std::shared_ptr<LockStream<MyDataFrame>> prodStream(new LockStream<MyDataFrame>());
+    std::shared_ptr<LockStream<MyDataFrame>> transStream(new LockStream<MyDataFrame>());
 
     producer_running = false;
-    threads.push_back(std::thread(producer_fast, stream));
-    threads.push_back(std::thread(consumer_fast, stream));
-    threads.push_back(std::thread(consumer_slow, stream));
-    threads.push_back(std::thread(consumer_instant, stream));
+    threads.push_back(std::thread(producer_fast, "producer", prodStream.get()));
+    threads.push_back(std::thread(consumer_fast, "consumer_fast", prodStream.get()));
+    threads.push_back(std::thread(consumer_slow, "consumer_slow", prodStream.get()));
+    threads.push_back(std::thread(consumer_instant, "consumer_instant", prodStream.get()));
+
+    threads.push_back(std::thread(transformer_fast, "transformer", prodStream.get(), transStream.get()));
+    threads.push_back(std::thread(consumer_fast, "consumer_tfo", transStream.get()));
 
     // launch production of elements, now that all threads
     // have been set up.
@@ -95,24 +118,31 @@ void run_4threads()
 
     for(auto& t: threads)
         t.join();
-    delete stream;
 }
 
 void run_overcapacity()
 {
     std::vector<std::thread> threads;
-    const auto threadCount = std::thread::hardware_concurrency() * 2;
+    const auto threadCount = std::thread::hardware_concurrency() * 2 + 2;
 
-    auto stream = new LockStream<MyDataFrame>();
+    std::shared_ptr<LockStream<MyDataFrame>> prodStream(new LockStream<MyDataFrame>());
+    std::shared_ptr<LockStream<MyDataFrame>> transStream(new LockStream<MyDataFrame>());
 
     producer_running = false;
-    threads.push_back(std::thread(producer_fast, stream));
-    threads.push_back(std::thread(consumer_fast, stream));
-    threads.push_back(std::thread(consumer_slow, stream));
-    threads.push_back(std::thread(consumer_instant, stream));
+    threads.push_back(std::thread(producer_fast, "producer", prodStream.get()));
+    threads.push_back(std::thread(consumer_fast, "consumer_fast", prodStream.get()));
+    threads.push_back(std::thread(consumer_slow, "consumer_slow", prodStream.get()));
+    threads.push_back(std::thread(consumer_instant, "consumer_instant", prodStream.get()));
 
-    for (uint i = 0; i < threadCount - 4; ++i)
-        threads.push_back(std::thread(consumer_fast, stream));
+    threads.push_back(std::thread(transformer_fast, "transformer", prodStream.get(), transStream.get()));
+
+    for (uint i = 0; i < threadCount - 5; ++i) {
+        // we connect half of the regular consumers to the producer, the rest goes to the transformer
+        if ((i % 2) == 0)
+            threads.push_back(std::thread(consumer_fast, std::string("consumer_raw_") + std::to_string(i), prodStream.get()));
+        else
+            threads.push_back(std::thread(consumer_fast, std::string("consumer_tf_") + std::to_string(i), prodStream.get()));
+    }
 
     std::cout << "Running " << threads.size() << " threads." << std::endl;
 
@@ -122,12 +152,11 @@ void run_overcapacity()
 
     for(auto& t: threads)
         t.join();
-    delete stream;
 }
 
 int main()
 {
-    run_timed("LockStream-4threads", run_4threads, N_OF_RUNS);
+    run_timed("LockStream-6threads", run_6threads, N_OF_RUNS);
 
     std::cout << std::endl;
     run_timed("LockStream-overcapacity", run_overcapacity, N_OF_RUNS);

@@ -16,10 +16,12 @@ cv::Mat process_data_instant(const MyDataFrame &data)
 
 cv::Mat process_data_fast(const MyDataFrame &data)
 {
-    cv::Mat result;
-    //cv::GaussianBlur(data.frame, result, cv::Size(11, 11), 0, 0);
-    cv::medianBlur(data.frame, result, 5);
+    auto result = data.frame.clone();
+
+    //cv::GaussianBlur(result, result, cv::Size(11, 11), 0, 0);
+    //cv::medianBlur(result, result, 5);
     //cv::GaussianBlur(result, result, cv::Size(3, 3), 0, 0);
+    cv::blur(result, result, cv::Size(5, 5));
 
     return result;
 }
@@ -29,6 +31,22 @@ cv::Mat process_data_slow(const MyDataFrame &data)
     for (uint i = 0; i < 4; ++i)
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     return process_data_fast(data);
+}
+
+MyDataFrame transform_data_fast(const MyDataFrame &data, size_t id)
+{
+    MyDataFrame newData;
+
+    newData.frame = process_data_fast(data);
+    cv::putText(newData.frame,
+                std::string("E ") + std::to_string(id),
+                cv::Point(24, 320),
+                cv::FONT_HERSHEY_COMPLEX,
+                1.5,
+                cv::Scalar(140, 140, 255));
+    newData.id = id;
+
+    return newData;
 }
 
 MyDataFrame create_data_200Hz(size_t index)

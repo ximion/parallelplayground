@@ -18,6 +18,8 @@ cv::Mat process_data_instant(const MyDataFrame &data);
 cv::Mat process_data_fast(const MyDataFrame &data);
 cv::Mat process_data_slow(const MyDataFrame &data);
 
+MyDataFrame transform_data_fast(const MyDataFrame &data, size_t id);
+
 MyDataFrame create_data_200Hz (size_t index);
 
 void display_frame(const cv::Mat& frame, const std::string& winName = "TestWindow");

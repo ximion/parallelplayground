@@ -32,12 +32,20 @@ public:
         } else {
             m_mtxNodata.lock(); // lock if no data is available
         }
-
         std::lock_guard<std::mutex> lock(m_mutex); // lock buffer write
-        assert(!m_buffer.empty());
+        if (m_buffer.empty()) {
+            if (m_terminated) {
+                m_mtxNodata.try_lock();
+                return std::nullopt;
+            }
+            std::cerr << "UNEXPECTED EMPTY BUFFER" << std::endl;
+            exit(9);
+        }
 
         auto data = m_buffer.front();
         m_buffer.pop();
+
+        // stay locked if no data is available in the buffer, otherwise lock again
         if (!m_buffer.empty())
             m_mtxNodata.unlock();
 
@@ -48,6 +56,11 @@ public:
     {
         std::lock_guard<std::mutex> lock(m_mutex);
         return m_buffer.size();
+    }
+
+    auto name() const
+    {
+        return m_name;
     }
 
 private:
