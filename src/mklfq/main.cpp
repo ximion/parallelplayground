@@ -5,11 +5,11 @@
 #include <pthread.h>
 
 #include "proconhelper.h"
-#include <lockstream.h>
+#include <mklfqstream.h>
 
 static std::atomic_bool producer_running = false;
 
-void producer_fast(const std::string& threadName, LockStream<MyDataFrame> *stream)
+void producer_fast(const std::string& threadName, MKLFQStream<MyDataFrame> *stream)
 {
     pthread_setname_np(pthread_self(), threadName.c_str());
 
@@ -22,7 +22,7 @@ void producer_fast(const std::string& threadName, LockStream<MyDataFrame> *strea
     stream->terminate();
 }
 
-void consumer_fast(const std::string& threadName, LockStream<MyDataFrame> *stream)
+void consumer_fast(const std::string& threadName, MKLFQStream<MyDataFrame> *stream)
 {
     pthread_setname_np(pthread_self(), threadName.c_str());
     size_t lastId = 0;
@@ -37,14 +37,14 @@ void consumer_fast(const std::string& threadName, LockStream<MyDataFrame> *strea
         //display_frame(result, sub->name());
 
         if (data->id != (lastId + 1))
-            std::cout << "Value dropped (fast consumer) [" << data->id << "]" << " BufferLen: " << sub->bufferLength() << std::endl;
+            std::cout << "Value dropped (fast consumer) [" << data->id << "]" << std::endl;
         lastId = data->id;
     }
     if (lastId != N_OF_DATAFRAMES)
         std::cout << "Fast consumer received only " << lastId << " data elements out of " << N_OF_DATAFRAMES << std::endl;
 }
 
-void consumer_slow(const std::string& threadName, LockStream<MyDataFrame> *stream)
+void consumer_slow(const std::string& threadName, MKLFQStream<MyDataFrame> *stream)
 {
     pthread_setname_np(pthread_self(), threadName.c_str());
     size_t lastId = 0;
@@ -57,7 +57,7 @@ void consumer_slow(const std::string& threadName, LockStream<MyDataFrame> *strea
         process_data_slow(data.value());
 
         if (data->id != (lastId + 1))
-            std::cout << "Value dropped (slow consumer) [" << data->id << "]" << " BufferLen: " << sub->bufferLength() << std::endl;
+            std::cout << "Value dropped (slow consumer) [" << data->id << "]" << std::endl;
         lastId = data->id;
     }
 
@@ -65,7 +65,7 @@ void consumer_slow(const std::string& threadName, LockStream<MyDataFrame> *strea
         std::cout << "Slow consumer received only " << lastId << " data elements out of " << N_OF_DATAFRAMES << std::endl;
 }
 
-void consumer_instant(const std::string& threadName, LockStream<MyDataFrame> *stream)
+void consumer_instant(const std::string& threadName, MKLFQStream<MyDataFrame> *stream)
 {
     pthread_setname_np(pthread_self(), threadName.c_str());
 
@@ -78,7 +78,7 @@ void consumer_instant(const std::string& threadName, LockStream<MyDataFrame> *st
     }
 }
 
-void transformer_fast(const std::string& threadName, LockStream<MyDataFrame> *recvStream, LockStream<MyDataFrame> *prodStream)
+void transformer_fast(const std::string& threadName, MKLFQStream<MyDataFrame> *recvStream, MKLFQStream<MyDataFrame> *prodStream)
 {
     pthread_setname_np(pthread_self(), threadName.c_str());
     size_t count = 1;
@@ -100,8 +100,8 @@ void transformer_fast(const std::string& threadName, LockStream<MyDataFrame> *re
 void run_6threads()
 {
     std::vector<std::thread> threads;
-    std::shared_ptr<LockStream<MyDataFrame>> prodStream(new LockStream<MyDataFrame>());
-    std::shared_ptr<LockStream<MyDataFrame>> transStream(new LockStream<MyDataFrame>());
+    std::shared_ptr<MKLFQStream<MyDataFrame>> prodStream(new MKLFQStream<MyDataFrame>());
+    std::shared_ptr<MKLFQStream<MyDataFrame>> transStream(new MKLFQStream<MyDataFrame>());
 
     producer_running = false;
     threads.push_back(std::thread(producer_fast, "producer", prodStream.get()));
@@ -125,18 +125,17 @@ void run_overcapacity()
     std::vector<std::thread> threads;
     const auto threadCount = std::thread::hardware_concurrency() * 2 + 2;
 
-    std::shared_ptr<LockStream<MyDataFrame>> prodStream(new LockStream<MyDataFrame>());
-    std::shared_ptr<LockStream<MyDataFrame>> transStream(new LockStream<MyDataFrame>());
+    std::shared_ptr<MKLFQStream<MyDataFrame>> prodStream(new MKLFQStream<MyDataFrame>());
+    std::shared_ptr<MKLFQStream<MyDataFrame>> transStream(new MKLFQStream<MyDataFrame>());
 
     producer_running = false;
     threads.push_back(std::thread(producer_fast, "producer", prodStream.get()));
     threads.push_back(std::thread(consumer_fast, "consumer_fast", prodStream.get()));
-    threads.push_back(std::thread(consumer_slow, "consumer_slow", prodStream.get()));
     threads.push_back(std::thread(consumer_instant, "consumer_instant", prodStream.get()));
 
     threads.push_back(std::thread(transformer_fast, "transformer", prodStream.get(), transStream.get()));
 
-    for (uint i = 0; i < threadCount - 5; ++i) {
+    for (uint i = 0; i < threadCount - 4; ++i) {
         // we connect half of the regular consumers to the producer, the rest goes to the transformer
         if ((i % 2) == 0)
             threads.push_back(std::thread(consumer_fast, std::string("consumer_raw_") + std::to_string(i), prodStream.get()));
@@ -156,10 +155,10 @@ void run_overcapacity()
 
 int main()
 {
-    run_timed("LockStream-6threads", run_6threads, N_OF_RUNS);
+    run_timed("MKLFQStream-6threads", run_6threads, N_OF_RUNS);
 
     std::cout << std::endl;
-    run_timed("LockStream-overcapacity", run_overcapacity, N_OF_RUNS);
+    run_timed("MKLFQStream-overcapacity", run_overcapacity, N_OF_RUNS);
 
     return 0;
 }

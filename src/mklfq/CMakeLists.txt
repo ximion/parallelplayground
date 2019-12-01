@@ -1,13 +1,14 @@
 
-add_executable(lockbuftransfer
+add_executable(mklfqtransfer
     main.cpp
     ../proconhelper.h
     ../proconhelper.cpp
-    lockstream.h
-    lockstream.cpp
+    mklfqstream.h
+    readerwriterqueue.h
+    atomicops.h
 )
 
-target_link_libraries(lockbuftransfer
+target_link_libraries(mklfqtransfer
     ${CMAKE_THREAD_LIBS_INIT}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}
