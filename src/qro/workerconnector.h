@@ -7,6 +7,7 @@
 #include <memory>
 
 #include "../proconhelper.h"
+#include "qrostream.h"
 
 #include "rep_interface_replica.h"
 
@@ -17,16 +18,20 @@ public:
     WorkerConnector(QSharedPointer<SimpleWorkerReplica> ptr);
     ~WorkerConnector() override;
 
-    bool connectAndRun();
+    bool connectAndRun(QROStream<MyDataFrame> *prodStream);
 
-    void sendProcessFrame(const MyDataFrame &data);
+    void sendProcessFrame(int style, const MyDataFrame &data);
+
+    cv::Mat lastFrame() const;
 
 public slots:
-    void receiveProcessedFrame(const QString &id);
+    void receiveProcessedFrame(uint id, long timestamp, const QString &shmKey);
 
 private:
     QSharedPointer<SimpleWorkerReplica> m_reptr;
     QProcess *m_proc;
     std::unique_ptr<QSharedMemory> m_shmSend;
     std::unique_ptr<QSharedMemory> m_shmRecv;
- };
+    QROStream<MyDataFrame> *m_prodStream;
+    cv::Mat m_lastFrame;
+};

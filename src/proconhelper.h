@@ -24,7 +24,7 @@ MyDataFrame create_data_200Hz (size_t index);
 
 void display_frame(const cv::Mat& frame, const std::string& winName = "TestWindow");
 
-void run_timed(const std::string &name, std::function<void()> func, int n_times);
+void run_timed(const std::string &name, std::function<double()> func, int n_times);
 
 int mydata_frame_to_memfd(const MyDataFrame &data);
 cv::Mat memfd_to_cvmat(int fd);

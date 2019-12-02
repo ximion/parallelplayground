@@ -78,8 +78,9 @@ public:
 
     std::shared_ptr<MKLFQStreamSubscription<T>> subscribe(const std::string& name)
     {
-        if (!m_allowSubscribe)
-            return nullptr;
+        //if (!m_allowSubscribe)
+        //    return nullptr;
+        std::lock_guard<std::mutex> lock(m_mutex);
         std::shared_ptr<MKLFQStreamSubscription<T>> sub(new MKLFQStreamSubscription<T> (name));
         m_subs.push_back(sub);
         return sub;
@@ -87,6 +88,7 @@ public:
 
     void push(const T &data)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_allowSubscribe = false;
         for(auto& sub: m_subs)
             sub->push(data);
@@ -94,6 +96,7 @@ public:
 
     void terminate()
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         std::for_each(m_subs.begin(), m_subs.end(), [](std::shared_ptr<MKLFQStreamSubscription<T>> sub){ sub->terminate(); });
         m_subs.clear();
         m_allowSubscribe = true;
@@ -102,5 +105,6 @@ public:
 private:
     std::thread::id m_ownerId;
     std::atomic_bool m_allowSubscribe;
+    std::mutex m_mutex;
     std::vector<std::shared_ptr<MKLFQStreamSubscription<T>>> m_subs;
 };

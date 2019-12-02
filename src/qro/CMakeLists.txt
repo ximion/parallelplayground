@@ -1,9 +1,5 @@
 
-find_package(Qt5Core)
 find_package(Qt5RemoteObjects)
-
-set(CMAKE_INCLUDE_CURRENT_DIR ON)
-set(CMAKE_AUTOMOC ON)
 
 qt5_generate_repc(REP_INTF_R_SRC interface.rep REPLICA)
 
@@ -12,6 +8,7 @@ add_executable(qrotransfer
     ${REP_INTF_R_SRC}
     ../proconhelper.h
     ../proconhelper.cpp
+    ../barrier.h
     cvmatshm.h
     cvmatshm.cpp
     qrostream.h

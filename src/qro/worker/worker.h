@@ -15,7 +15,7 @@ public:
     SimpleWorker(QObject *parent = nullptr);
     ~SimpleWorker() override;
 
-    bool processFrame(int style, const QString &shmKey) override;
+    bool processFrame(int style, uint id, long timestamp, const QString &shmKey) override;
     bool ready() const override;
 
 public slots:
@@ -23,8 +23,9 @@ public slots:
 
 private:
     QTimer *m_timer;
-    QQueue<cv::Mat> m_queue;
+    QQueue<std::pair<int, MyDataFrame>> m_queue;
 
     std::unique_ptr<QSharedMemory> m_shmSend;
     std::unique_ptr<QSharedMemory> m_shmRecv;
+    std::string m_winName;
 };

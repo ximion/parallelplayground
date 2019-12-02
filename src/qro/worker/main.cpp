@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 
     SimpleWorker srcWorker;
 
-    if (a.arguments().length() != 2) {
+    if ((a.arguments().length() < 2) || (a.arguments().length() > 3)) {
         qCritical() << "Invalid amount of arguments!";
         return 2;
     }

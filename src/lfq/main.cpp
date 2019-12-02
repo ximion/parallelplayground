@@ -97,7 +97,7 @@ void transformer_fast(const std::string& threadName, LFQStream<MyDataFrame> *rec
     prodStream->terminate();
 }
 
-void run_6threads()
+double run_6threads()
 {
     std::vector<std::thread> threads;
     std::shared_ptr<LFQStream<MyDataFrame>> prodStream(new LFQStream<MyDataFrame>());
@@ -118,9 +118,11 @@ void run_6threads()
 
     for(auto& t: threads)
         t.join();
+
+    return 0;
 }
 
-void run_overcapacity()
+double run_overcapacity()
 {
     std::vector<std::thread> threads;
     const auto threadCount = std::thread::hardware_concurrency() * 2 + 2;
@@ -140,7 +142,7 @@ void run_overcapacity()
         if ((i % 2) == 0)
             threads.push_back(std::thread(consumer_fast, std::string("consumer_raw_") + std::to_string(i), prodStream.get()));
         else
-            threads.push_back(std::thread(consumer_fast, std::string("consumer_tf_") + std::to_string(i), prodStream.get()));
+            threads.push_back(std::thread(consumer_fast, std::string("consumer_tf_") + std::to_string(i), transStream.get()));
     }
 
     std::cout << "Running " << threads.size() << " threads." << std::endl;
@@ -151,6 +153,8 @@ void run_overcapacity()
 
     for(auto& t: threads)
         t.join();
+
+    return 0;
 }
 
 int main()

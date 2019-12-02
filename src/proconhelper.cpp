@@ -79,20 +79,23 @@ void display_frame(const cv::Mat &frame, const std::string &winName)
     cv::waitKey(1);
 }
 
-void run_timed(const std::string &name, std::function<void ()> func, int n_times)
+void run_timed(const std::string &name, std::function<double ()> func, int n_times)
 {
     std::vector<double> timings;
+    double avgPrepTime = 0;
 
     std::cout << "Running " << name << " with " << n_times << " trials using " << N_OF_DATAFRAMES << " produced elements each." << std::endl;
 
     for (int i = 1; i <= n_times; i++) {
         std::cout << "Trial " << i << std::endl;
         auto start = std::chrono::high_resolution_clock::now();
-        func();
+        auto prepareTime = func();
         auto finish = std::chrono::high_resolution_clock::now();
         std::chrono::duration<double> elapsed = finish - start;
-        timings.push_back(elapsed.count() * 1000);
+        timings.push_back((elapsed.count() * 1000) - prepareTime);
+        avgPrepTime += prepareTime;
     }
+    avgPrepTime = avgPrepTime / n_times;
 
     double sum = std::accumulate(timings.begin(), timings.end(), 0.0);
     double mean = sum / timings.size();
@@ -102,7 +105,7 @@ void run_timed(const std::string &name, std::function<void ()> func, int n_times
     double sq_sum = std::inner_product(diff.begin(), diff.end(), diff.begin(), 0.0);
     double stdev = std::sqrt(sq_sum / timings.size());
 
-    std::cout << "Mean time for " << name << ": " << mean << "msec (" << timings.size() << " runs)" << " Standard deviation: " << stdev << std::endl;
+    std::cout << "Mean time for " << name << ": " << mean << "msec (Avg. Prepare Time: " << avgPrepTime << "; " << timings.size() << " runs)" << " Standard deviation: " << stdev << std::endl;
 }
 
 static void error(const char *msg)

@@ -88,8 +88,9 @@ public:
 
     std::shared_ptr<LFQStreamSubscription<T>> subscribe(const std::string& name)
     {
-        if (!m_allowSubscribe)
-            return nullptr;
+        //if (!m_allowSubscribe)
+        //    return nullptr;
+        std::lock_guard<std::mutex> lock(m_mutex);
         std::shared_ptr<LFQStreamSubscription<T>> sub(new LFQStreamSubscription<T> (name));
         m_subs.push_back(sub);
         return sub;
@@ -97,6 +98,7 @@ public:
 
     void push(const T &data)
     {
+        std::lock_guard<std::mutex> lock(m_mutex);
         m_allowSubscribe = false;
         for(auto& sub: m_subs)
             sub->push(data);
@@ -110,6 +112,7 @@ public:
     }
 
 private:
+    std::mutex m_mutex;
     std::thread::id m_ownerId;
     std::atomic_bool m_allowSubscribe;
     std::vector<std::shared_ptr<LFQStreamSubscription<T>>> m_subs;

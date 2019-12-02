@@ -3,6 +3,6 @@
 class SimpleWorker
 {
     PROP(bool ready=false READONLY)
-    SIGNAL(frameProcessed(const QString &shmKey))
-    SLOT(bool processFrame(int style, const QString &shmKey));
+    SIGNAL(frameProcessed(uint id, long timestamp, const QString &shmKey))
+    SLOT(bool processFrame(int style, uint id, long timestamp, const QString &shmKey));
 };

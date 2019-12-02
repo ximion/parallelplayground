@@ -77,8 +77,8 @@ public:
 
     std::shared_ptr<QROStreamSubscription<T>> subscribe(const std::string& name)
     {
-        if (!m_allowSubscribe)
-            return nullptr;
+        //if (!m_allowSubscribe)
+        //    return nullptr;
         std::lock_guard<std::mutex> lock(m_mutex);
         std::shared_ptr<QROStreamSubscription<T>> sub(new QROStreamSubscription<T> (name));
         m_subs.push_back(sub);
