@@ -13,11 +13,10 @@ WorkerConnector::WorkerConnector(QSharedPointer<SimpleWorkerReplica> ptr)
     : QObject(nullptr),
       m_reptr(ptr),
       m_proc(new QProcess(this)),
-      m_shmSend(new QSharedMemory),
-      m_shmRecv(new QSharedMemory),
+      m_shmSend(new SharedMemory),
+      m_shmRecv(new SharedMemory),
       m_prodStream(nullptr)
 {
-    m_shmSend->setKey(QUuid::createUuid().toString(QUuid::Id128));
     connect(ptr.data(), &SimpleWorkerReplica::frameProcessed, this, &WorkerConnector::receiveProcessedFrame);
     //m_proc->setProcessChannelMode(QProcess::ForwardedChannels);
 }
@@ -51,7 +50,7 @@ void WorkerConnector::sendProcessFrame(int style, const MyDataFrame &data)
 {
     cvmat_to_shm(m_shmSend, data.frame);
 
-    if (!m_reptr.data()->processFrame(style, data.id, data.timestamp, m_shmSend->key()).waitForFinished(10000))
+    if (!m_reptr.data()->processFrame(style, data.id, data.timestamp, m_shmSend->shmKey()).waitForFinished(10000))
         qDebug() << "Frame processing failed!";
 }
 
@@ -62,7 +61,7 @@ cv::Mat WorkerConnector::lastFrame() const
 
 void WorkerConnector::receiveProcessedFrame(uint id, long timestamp, const QString &shmKey)
 {
-    m_shmRecv->setKey(shmKey);
+    m_shmRecv->setShmKey(shmKey);
     MyDataFrame data;
     data.id = id;
     data.timestamp = timestamp;

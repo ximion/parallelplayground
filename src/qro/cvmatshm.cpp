@@ -18,11 +18,11 @@ static void error(const QString& msg)
     exit(EXIT_FAILURE);
 }
 
-void cvmat_to_shm(std::unique_ptr<QSharedMemory> &shm, const cv::Mat &frame)
+void cvmat_to_shm(std::unique_ptr<SharedMemory> &shm, const cv::Mat &frame)
 {
     int mat_type = frame.type();
     int mat_channels = frame.channels();
-    ssize_t memsize = sizeof(int) * 6;
+    size_t memsize = sizeof(int) * 6;
     if (frame.isContinuous())
         memsize += frame.dataend - frame.datastart;
     else
@@ -31,18 +31,16 @@ void cvmat_to_shm(std::unique_ptr<QSharedMemory> &shm, const cv::Mat &frame)
     if (shm->size() == 0) {
         // this is a fresh shared-memory object, so create it
         if (!shm->create(memsize))
-            error(shm->errorString());
+            error(shm->lastError());
     } else {
         if (shm->size() != memsize) {
             // the memory segment doesn't have the right size, let's create a new one!
-            shm.reset(new QSharedMemory);
-            shm->setKey(QUuid::createUuid().toString(QUuid::Id128));
+            shm.reset(new SharedMemory);
             if (!shm->create(memsize))
-                error(shm->errorString());
+                error(shm->lastError());
         }
     }
 
-    shm->lock();
     auto shm_data = static_cast<char*>(shm->data());
 
     // write header
@@ -66,17 +64,14 @@ void cvmat_to_shm(std::unique_ptr<QSharedMemory> &shm, const cv::Mat &frame)
             memcpy(shm_data + pos, frame.ptr<char>(r), rowsz);
         }
     }
-
-    shm->unlock();
 }
 
-cv::Mat shm_to_cvmat(std::unique_ptr<QSharedMemory> &shm)
+cv::Mat shm_to_cvmat(std::unique_ptr<SharedMemory> &shm)
 {
-    if (!shm->isAttached() && !shm->attach(QSharedMemory::ReadOnly))
-        error(shm->errorString());
+    if (!shm->isAttached() && !shm->attach())
+        error(shm->lastError());
 
-    shm->lock();
-    auto shm_data = static_cast<const char*>(shm->constData());
+    auto shm_data = static_cast<const char*>(shm->data());
     size_t pos = 0;
 
     // read header
@@ -93,7 +88,6 @@ cv::Mat shm_to_cvmat(std::unique_ptr<QSharedMemory> &shm)
     // read data
     cv::Mat mat(rows, cols, mat_type);
     memcpy(mat.data, shm_data + pos, shm->size() - pos);
-    shm->unlock();
 
     return mat;
 }

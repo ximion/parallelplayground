@@ -3,9 +3,9 @@
 
 #include <QObject>
 #include <QSharedPointer>
-#include <QSharedMemory>
 #include <memory>
 
+#include "sharedmemory.h"
 #include "../proconhelper.h"
 #include "qrostream.h"
 
@@ -30,8 +30,8 @@ public slots:
 private:
     QSharedPointer<SimpleWorkerReplica> m_reptr;
     QProcess *m_proc;
-    std::unique_ptr<QSharedMemory> m_shmSend;
-    std::unique_ptr<QSharedMemory> m_shmRecv;
+    std::unique_ptr<SharedMemory> m_shmSend;
+    std::unique_ptr<SharedMemory> m_shmRecv;
     QROStream<MyDataFrame> *m_prodStream;
     cv::Mat m_lastFrame;
 };

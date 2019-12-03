@@ -10,10 +10,9 @@
 
 SimpleWorker::SimpleWorker(QObject *parent)
     : SimpleWorkerSource(parent),
-      m_shmSend(new QSharedMemory),
-      m_shmRecv(new QSharedMemory)
+      m_shmSend(new SharedMemory),
+      m_shmRecv(new SharedMemory)
 {
-    m_shmSend->setKey(QUuid::createUuid().toString(QUuid::Id128));
     m_timer = new QTimer(this); // Initialize timer
     QObject::connect(m_timer, &QTimer::timeout, this, &SimpleWorker::processAndSendData);
     m_timer->start(0);
@@ -29,7 +28,7 @@ SimpleWorker::~SimpleWorker()
 bool SimpleWorker::processFrame(int style, uint id, long timestamp, const QString &shmKey)
 {
     MyDataFrame data;
-    m_shmRecv->setKey(shmKey);
+    m_shmRecv->setShmKey(shmKey);
 
     data.frame = shm_to_cvmat(m_shmRecv);
     data.id = id;
@@ -65,5 +64,5 @@ void SimpleWorker::processAndSendData()
     //cv::imshow(m_winName, data.frame);
     //cv::waitKey(1);
 
-    emit frameProcessed(data.id, data.timestamp, m_shmSend->key());
+    emit frameProcessed(data.id, data.timestamp, m_shmSend->shmKey());
 }

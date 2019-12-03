@@ -6,6 +6,8 @@ add_executable(qroworker
     ${REP_INTF_S_SRC}
     ../../proconhelper.h
     ../../proconhelper.cpp
+    ../sharedmemory.h
+    ../sharedmemory.cpp
     ../cvmatshm.h
     ../cvmatshm.cpp
     worker.h
@@ -13,6 +15,7 @@ add_executable(qroworker
 )
 
 target_link_libraries(qroworker
+    rt
     ${CMAKE_THREAD_LIBS_INIT}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}

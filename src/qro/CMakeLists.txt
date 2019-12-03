@@ -9,6 +9,8 @@ add_executable(qrotransfer
     ../proconhelper.h
     ../proconhelper.cpp
     ../barrier.h
+    sharedmemory.h
+    sharedmemory.cpp
     cvmatshm.h
     cvmatshm.cpp
     qrostream.h
@@ -19,6 +21,7 @@ add_executable(qrotransfer
 )
 
 target_link_libraries(qrotransfer
+    rt
     ${CMAKE_THREAD_LIBS_INIT}
     ${Boost_LIBRARIES}
     ${OpenCV_LIBS}

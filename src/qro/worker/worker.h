@@ -7,6 +7,7 @@
 
 #include "rep_interface_source.h"
 #include "../../proconhelper.h"
+#include "../sharedmemory.h"
 
 class SimpleWorker : public SimpleWorkerSource
 {
@@ -25,7 +26,7 @@ private:
     QTimer *m_timer;
     QQueue<std::pair<int, MyDataFrame>> m_queue;
 
-    std::unique_ptr<QSharedMemory> m_shmSend;
-    std::unique_ptr<QSharedMemory> m_shmRecv;
+    std::unique_ptr<SharedMemory> m_shmSend;
+    std::unique_ptr<SharedMemory> m_shmRecv;
     std::string m_winName;
 };
